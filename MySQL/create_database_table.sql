@@ -15,3 +15,12 @@ id int primary key,
 username varchar(20),
 emai varchar(50)
 );
+
+CREATE TABLE ListaCompra
+(
+Producto char(20) primary key,
+Cantidad int,
+Precio float,
+Prioridad char(20),
+Destinatario char(20)
+);
