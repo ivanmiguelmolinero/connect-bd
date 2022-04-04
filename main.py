@@ -1,5 +1,6 @@
 import pymysql
 import json
+import re
 import boto3
 from botocore.exceptions import NoCredentialsError
 from dotenv import dotenv_values
@@ -89,6 +90,61 @@ class DataBase:
         except Exception as e:
             print(e)
 
+    def json_to_db(self, tabla_s3, s3_file):
+        sql = "CREATE TABLE {} (Producto char(20) primary key, Cantidad int, Precio float, Prioridad char(20), Destinatario char(20))".format(
+            tabla_s3
+        )
+        str_prueba = "CREATE TABLE prueba_s3 ("
+        sql_insert = "INSERT INTO prueba_s3 VALUES\n("
+        last_object = False
+
+        try:
+            try:
+                self.cursor.execute(sql)
+                print("Table created!")
+            except Exception as e:
+                print("ERROR:", e)
+            with open(s3_file, "r") as data_file:
+                data = json.load(data_file)
+                print(type(data))
+                print(data[0]["Precio"])
+                keys = list(data[0].keys())
+            for key in keys:
+                class_value_aux = str(type(data[0][key]))
+                # print(class_value_aux)
+                class_value = (re.findall(r"'(.*?)'", class_value_aux))[0]
+                if class_value == "str":
+                    class_value = "char(50)"
+                # print(class_value)
+                if key == keys[-1]:
+                    print("ÚLTIMO")
+                    str_prueba += key + " " + class_value + ")"
+                else:
+                    str_prueba += key + " " + class_value + ", "
+            print(str_prueba)
+            # self.cursor.execute(str_prueba)
+            print("Table prueba_s3 created!")
+            for object in data:
+                if object == data[-1]:
+                    last_object = True
+                for key in keys:
+                    str_to_add = '"' + str(object[key]) + '"'
+                    if key == keys[-1]:
+                        print("ÚLTIMO VALOR")
+                        if last_object:
+                            print("ULTIMO VALOR DEL ÚLTIMO OBJETO")
+                            sql_insert += str_to_add + ");"
+                        else:
+                            sql_insert += str_to_add + "),\n("
+                    else:
+                        sql_insert += str_to_add + ", "
+            print(sql_insert)
+            self.cursor.execute(sql_insert)
+            print("Values inserted in DB!")
+
+        except Exception as e:
+            print(e)
+
 
 class S3_aws:
     def __init__(self):
@@ -145,3 +201,6 @@ if __name__ == "__main__":
 
     # Download JSON file from AWS
     s3.download_from_aws(bucket_s3, s3_json_file, file_name_s3_to_local)
+
+    # Create table in DB for S3 file
+    database.json_to_db("tabla_s3", file_name_s3_to_local)
