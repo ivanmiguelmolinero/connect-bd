@@ -1,0 +1,1 @@
+DROP TABLE prueba_s3;

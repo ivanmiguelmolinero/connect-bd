@@ -18,3 +18,10 @@ INSERT INTO ListaCompra VALUES
 ("Manga", "3", "7.95", "Urgente", "Ivan"),
 ("Comic", "1", "13.95", "Urgente", "Ivan"),
 ("Cola", "25", "1.25", "Media", "Jose");
+
+INSERT INTO prueba_s3 VALUES
+("Cola", "25", "1.25", "Media", "Jose"),
+("Comic", "1", "13.95", "Urgente", "Ivan"),
+("Manga", "3", "7.95", "Urgente", "Ivan"),
+("Pan", "2", "0.5", "Alta", "Javi"),
+("Tomates", "7", "1.2", "Baja", "Ivan");

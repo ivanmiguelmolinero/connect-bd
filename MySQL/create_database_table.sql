@@ -24,3 +24,10 @@ Precio float,
 Prioridad char(20),
 Destinatario char(20)
 );
+
+CREATE TABLE sincant
+(
+id int,
+username char,
+emai char
+);
