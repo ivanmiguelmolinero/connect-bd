@@ -1,6 +1,9 @@
 import pymysql
 import json
 import re
+import threading
+import time
+import signal
 import boto3
 from botocore.exceptions import NoCredentialsError
 from dotenv import dotenv_values
@@ -64,86 +67,93 @@ class DataBase:
             raise
     """
 
-    def data_to_json(self, tabla):
-        sql = "SELECT * FROM {}".format(tabla)
-        sql_col = "SHOW COLUMNS FROM {}".format(tabla)
+    def data_to_json(self, tabla, json_file):
 
         try:
-            print("Volcando los datos al archivo JSON...")
-            list = []
-            user_aux = {}
-            i = 0
-            self.cursor.execute(sql)
-            data_db = self.cursor.fetchall()
-            self.cursor.execute(sql_col)
-            cols = self.cursor.fetchall()
-            for user in data_db:
-                for col in cols:
-                    user_aux[col[0]] = user[i]
-                    i += 1
-                list.append(user_aux)
+            while True:
+                sql = "SELECT * FROM {}".format(tabla)
+                sql_col = "SHOW COLUMNS FROM {}".format(tabla)
+
+                print("Dumping the data to the JSON file...")
+                list = []
                 user_aux = {}
                 i = 0
-            with open(json_file, "w") as outfile:
-                json.dump(list, outfile)
+                self.cursor.execute(sql)
+                data_db = self.cursor.fetchall()
+                self.cursor.execute(sql_col)
+                cols = self.cursor.fetchall()
+                for user in data_db:
+                    for col in cols:
+                        user_aux[col[0]] = user[i]
+                        i += 1
+                    list.append(user_aux)
+                    user_aux = {}
+                    i = 0
+                with open(json_file, "w") as outfile:
+                    json.dump(list, outfile)
+                time.sleep(60)
+
+                if exit_event.is_set():
+                    break
 
         except Exception as e:
             print(e)
 
-    def json_to_db(self, tabla_s3, s3_file):
-        sql = "CREATE TABLE {} (Producto char(20) primary key, Cantidad int, Precio float, Prioridad char(20), Destinatario char(20))".format(
-            tabla_s3
-        )
-        str_prueba = "CREATE TABLE prueba_s3 ("
-        sql_insert = "INSERT INTO prueba_s3 VALUES\n("
+    def json_to_db(self, s3_table, s3_file):
+        sql = "CREATE TABLE {} (".format(s3_table)
+        sql_insert = "INSERT INTO {} VALUES\n(".format(s3_table)
         last_object = False
+        """
+        (1050, "Table 'tabla_s3_videogames' already exists")
+        """
 
         try:
-            try:
-                self.cursor.execute(sql)
-                print("Table created!")
-            except Exception as e:
-                print("ERROR:", e)
             with open(s3_file, "r") as data_file:
                 data = json.load(data_file)
-                print(type(data))
-                print(data[0]["Precio"])
                 keys = list(data[0].keys())
             for key in keys:
                 class_value_aux = str(type(data[0][key]))
-                # print(class_value_aux)
                 class_value = (re.findall(r"'(.*?)'", class_value_aux))[0]
                 if class_value == "str":
                     class_value = "char(50)"
-                # print(class_value)
                 if key == keys[-1]:
-                    print("ÚLTIMO")
-                    str_prueba += key + " " + class_value + ")"
+                    sql += key + " " + class_value + ")"
                 else:
-                    str_prueba += key + " " + class_value + ", "
-            print(str_prueba)
-            # self.cursor.execute(str_prueba)
-            print("Table prueba_s3 created!")
+                    sql += key + " " + class_value + ", "
+            self.cursor.execute(sql)
+            print("Table", s3_table, "created!")
             for object in data:
+                row = "("
                 if object == data[-1]:
                     last_object = True
                 for key in keys:
                     str_to_add = '"' + str(object[key]) + '"'
                     if key == keys[-1]:
-                        print("ÚLTIMO VALOR")
                         if last_object:
-                            print("ULTIMO VALOR DEL ÚLTIMO OBJETO")
                             sql_insert += str_to_add + ");"
                         else:
+                            row += str_to_add + ")"
                             sql_insert += str_to_add + "),\n("
+                            print(row)
                     else:
                         sql_insert += str_to_add + ", "
-            print(sql_insert)
+                        row += str_to_add + ", "
             self.cursor.execute(sql_insert)
-            print("Values inserted in DB!")
+            self.connection.commit()
+            print(self.cursor.rowcount, "values inserted in DB!")
 
         except Exception as e:
-            print(e)
+            if str(e).startswith("(1050,"):
+                print(s3_table, "already exists. Proceeding to update it")
+                sql_all = "SELECT * FROM {}".format(s3_table)
+                self.cursor.execute(sql_all)
+                print(self.cursor.fetchall())
+            else:
+                print(e)
+
+
+def signal_handler(signum, frame):
+    exit_event.set()
 
 
 class S3_aws:
@@ -186,12 +196,20 @@ if __name__ == "__main__":
     bucket_s3 = config["bucket_s3"]
     s3_json_file = config["s3_json_file"]
     file_name_s3_to_local = config["file_name_s3_to_local"]
+    s3_table = config["s3_table"]
+
+    exit_event = threading.Event()
 
     # Load database
     database = DataBase()
-    database.select_user("Varios")
+    # database.select_user("Varios")
+    signal.signal(signal.SIGINT, signal_handler)
+    consult_db = threading.Thread(
+        target=database.data_to_json, args=(table_db, json_file)
+    )
+    consult_db.start()
     # Dump data to JSON
-    database.data_to_json(table_db)
+    # database.data_to_json(table_db)
 
     # Load s3 bucket
     s3 = S3_aws()
@@ -203,4 +221,4 @@ if __name__ == "__main__":
     s3.download_from_aws(bucket_s3, s3_json_file, file_name_s3_to_local)
 
     # Create table in DB for S3 file
-    database.json_to_db("tabla_s3", file_name_s3_to_local)
+    database.json_to_db(s3_table, file_name_s3_to_local)
