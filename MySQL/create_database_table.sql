@@ -28,6 +28,16 @@ Destinatario char(20)
 CREATE TABLE sincant
 (
 id int,
-username char,
-emai char
+username char(50),
+emai char(50)
+);
+
+CREATE TABLE Videogames
+(
+Game varchar(50) primary key not null,
+Developer varchar(50),
+Price float,
+Console varchar(50),
+Year_out int,
+Score float
 );
