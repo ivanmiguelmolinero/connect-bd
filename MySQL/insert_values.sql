@@ -43,7 +43,8 @@ INSERT INTO Videogames VALUES
 ("DBZ: BT3", "Spike Chunsoft", "39.95", "Multi", "2007", "10.0");
 
 INSERT INTO Videogames VALUES
-("Other mas", "Other developer mas", "19.95", "Wii", "2053", "2.5");
+("RDR2", "Rockstar", "7.77", "Multi", "2018", "2.25"),
+("TLOZ: BOTW", "Nintendo", "100.52", "Switch", "2016", "9.99");
 
 INSERT INTO sincant VALUES
 ("1", "IvanMM", "ivan@gmail.com"),
