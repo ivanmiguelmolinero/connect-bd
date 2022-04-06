@@ -99,13 +99,11 @@ class DataBase:
         except Exception as e:
             print(e)
 
-    def json_to_db(self, s3_table, s3_file):
+    """def json_to_db(self, s3_table, s3_file):
         sql = "CREATE TABLE {} (".format(s3_table)
         sql_insert = "INSERT INTO {} VALUES\n(".format(s3_table)
         last_object = False
-        """
-        (1050, "Table 'tabla_s3_videogames' already exists")
-        """
+        characters = "'[]"
 
         try:
             with open(s3_file, "r") as data_file:
@@ -145,11 +143,75 @@ class DataBase:
         except Exception as e:
             if str(e).startswith("(1050,"):
                 print(s3_table, "already exists. Proceeding to update it")
-                sql_all = "SELECT * FROM {}".format(s3_table)
-                self.cursor.execute(sql_all)
-                print(self.cursor.fetchall())
+                for object in data:
+                    mismo_objeto = False
+                    for key in keys:
+                        print(mismo_objeto)
+                        if not mismo_objeto:
+                            if key == keys[0]:
+                                keys_string = "".join(
+                                    x for x in str(keys) if x not in characters
+                                )
+                                sql_object = (
+                                    "SELECT "
+                                    + keys_string
+                                    + " FROM "
+                                    + s3_table
+                                    + " WHERE "
+                                    + key
+                                    + ' = "'
+                                    + str(object[key])
+                                    + '"'
+                                )
+                                self.cursor.execute(sql_object)
+                                print("ORDEN:", sql_object)
+                                all_object = self.cursor.fetchone()
+                                print("ALL OBJECT:", all_object)
+                                if str(all_object) != "None":
+                                    print("MISMO OBJETO")
+                                    mismo_objeto = True
+                                    value_sql = all_object[0]
+                                    print("SQL:", value_sql)
+                                    print("OBJECT:", object[key])
+                                    print()
+                                    print()
+                                else:
+                                    print("¡¡¡AAAAAAH OBJETO NUEVO!!!!")
+                                    mismo_objeto = False
+                                    str_to_add = '"' + str(object[key]) + '"'
+                                    if key == keys[-1]:
+                                        if last_object:
+                                            sql_insert += str_to_add + ");"
+                                        else:
+                                            # row += str_to_add + ")"
+                                            sql_insert += str_to_add + "),\n("
+                                            # print(row)
+                                    else:
+                                        sql_insert += str_to_add + ", "
+                                        # row += str_to_add + ", "
+                            elif not mismo_objeto:
+                                str_to_add = '"' + str(object[key]) + '"'
+                                if key == keys[-1]:
+                                    if last_object:
+                                        sql_insert += str_to_add + ");"
+                                    else:
+                                        # row += str_to_add + ")"
+                                        sql_insert += str_to_add + "),\n("
+                                        # print(row)
+                                else:
+                                    sql_insert += str_to_add + ", "
+                                    # row += str_to_add + ", "
+                sql_insert = sql_insert[:-3]
+                print("ORDEN FINAL A EJECUTAR:", sql_insert)
+                self.cursor.execute(sql_insert)
+                self.connection.commit()
+                print(self.cursor.rowcount, "values inserted in DB!")
+
+                # sql_all = "SELECT * FROM {}".format(s3_table)
+                # self.cursor.execute(sql_all)
+                # print(self.cursor.fetchall())
             else:
-                print(e)
+                print(e)"""
 
 
 def signal_handler(signum, frame):
