@@ -4,6 +4,7 @@ import re
 import threading
 import time
 import signal
+import requests
 import boto3
 from botocore.exceptions import NoCredentialsError
 from dotenv import dotenv_values
@@ -68,6 +69,7 @@ class DataBase:
     """
 
     def data_to_json(self, tabla, json_file):
+        global json_content
 
         try:
             while True:
@@ -91,6 +93,7 @@ class DataBase:
                     i = 0
                 with open(json_file, "w") as outfile:
                     json.dump(list, outfile)
+                json_content = list
                 time.sleep(60)
 
                 if exit_event.is_set():
@@ -259,6 +262,7 @@ if __name__ == "__main__":
     s3_json_file = config["s3_json_file"]
     file_name_s3_to_local = config["file_name_s3_to_local"]
     s3_table = config["s3_table"]
+    json_content = []
 
     exit_event = threading.Event()
 
@@ -267,17 +271,21 @@ if __name__ == "__main__":
     # database.select_user("Varios")
     signal.signal(signal.SIGINT, signal_handler)
     consult_db = threading.Thread(
-        target=database.data_to_json, args=(table_db, json_file)
+        target=database.data_to_json, args=(table_db, json_file)  # Dump data to JSON
     )
     consult_db.start()
-    # Dump data to JSON
-    # database.data_to_json(table_db)
 
     # Load s3 bucket
     s3 = S3_aws()
 
     # Upload JSON file to bucket in AWS
-    s3.upload_to_aws(json_file, bucket_s3, s3_json_file)
+    response = requests.post(
+        "https://0rnq7qewhh.execute-api.eu-west-3.amazonaws.com/test/jsontos3",
+        headers={"Content-Type": "application/json"},
+        json=json_content,
+    )
+    print(response.text)
+    # s3.upload_to_aws(json_file, bucket_s3, s3_json_file)
 
     # Download JSON file from AWS
     s3.download_from_aws(bucket_s3, s3_json_file, file_name_s3_to_local)
