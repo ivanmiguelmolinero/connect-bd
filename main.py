@@ -102,9 +102,19 @@ class DataBase:
         except Exception as e:
             print(e)
 
+    def create_order(self, key, keys, last_object, object):
+        str_to_add = '"' + str(object[key]) + '"'
+        if key == keys[-1]:
+            if last_object:
+                self.sql_insert += str_to_add + ");"
+            else:
+                self.sql_insert += str_to_add + "),\n("
+        else:
+            self.sql_insert += str_to_add + ", "
+
     """def json_to_db(self, s3_table, s3_file):
         sql = "CREATE TABLE {} (".format(s3_table)
-        sql_insert = "INSERT INTO {} VALUES\n(".format(s3_table)
+        self.sql_insert = "INSERT INTO {} VALUES\n(".format(s3_table)
         last_object = False
         characters = "'[]"
 
@@ -124,22 +134,18 @@ class DataBase:
             self.cursor.execute(sql)
             print("Table", s3_table, "created!")
             for object in data:
-                row = "("
                 if object == data[-1]:
                     last_object = True
                 for key in keys:
                     str_to_add = '"' + str(object[key]) + '"'
                     if key == keys[-1]:
                         if last_object:
-                            sql_insert += str_to_add + ");"
+                            self.sql_insert += str_to_add + ");"
                         else:
-                            row += str_to_add + ")"
-                            sql_insert += str_to_add + "),\n("
-                            print(row)
+                            self.sql_insert += str_to_add + "),\n("
                     else:
-                        sql_insert += str_to_add + ", "
-                        row += str_to_add + ", "
-            self.cursor.execute(sql_insert)
+                        self.sql_insert += str_to_add + ", "
+            self.cursor.execute(self.sql_insert)
             self.connection.commit()
             print(self.cursor.rowcount, "values inserted in DB!")
 
@@ -147,6 +153,7 @@ class DataBase:
             if str(e).startswith("(1050,"):
                 print(s3_table, "already exists. Proceeding to update it")
                 for object in data:
+                    index_object = 0
                     mismo_objeto = False
                     for key in keys:
                         print(mismo_objeto)
@@ -173,40 +180,56 @@ class DataBase:
                                 if str(all_object) != "None":
                                     print("MISMO OBJETO")
                                     mismo_objeto = True
-                                    value_sql = all_object[0]
+                                    value_sql = all_object[index_object]
                                     print("SQL:", value_sql)
                                     print("OBJECT:", object[key])
+                                    if value_sql != object[key]:
+                                        sql_update = "UPDATE {} SET {} = '{}' WHERE {} = '{}'".format(
+                                            s3_table,
+                                            key,
+                                            object[key],
+                                            keys[0],
+                                            all_object[0],
+                                        )
+                                        print("ORDEN:", sql_update)
+                                        self.cursor.execute(sql_update)
                                     print()
                                     print()
+                                    index_object += 1
                                 else:
                                     print("¡¡¡AAAAAAH OBJETO NUEVO!!!!")
                                     mismo_objeto = False
-                                    str_to_add = '"' + str(object[key]) + '"'
-                                    if key == keys[-1]:
-                                        if last_object:
-                                            sql_insert += str_to_add + ");"
-                                        else:
-                                            # row += str_to_add + ")"
-                                            sql_insert += str_to_add + "),\n("
-                                            # print(row)
-                                    else:
-                                        sql_insert += str_to_add + ", "
-                                        # row += str_to_add + ", "
-                            elif not mismo_objeto:
-                                str_to_add = '"' + str(object[key]) + '"'
-                                if key == keys[-1]:
-                                    if last_object:
-                                        sql_insert += str_to_add + ");"
-                                    else:
-                                        # row += str_to_add + ")"
-                                        sql_insert += str_to_add + "),\n("
-                                        # print(row)
-                                else:
-                                    sql_insert += str_to_add + ", "
-                                    # row += str_to_add + ", "
-                sql_insert = sql_insert[:-3]
-                print("ORDEN FINAL A EJECUTAR:", sql_insert)
-                self.cursor.execute(sql_insert)
+                                    #str_to_add = '"' + str(object[key]) + '"'
+                                    #if key == keys[-1]:
+                                    #    if last_object:
+                                    #        sql_insert += str_to_add + ");"
+                                    #    else:
+                                    #        sql_insert += str_to_add + "),\n("
+                                    #else:
+                                    #    sql_insert += str_to_add + ", "
+                                    self.create_order(key, keys, last_object, object)
+                        else:
+                            print("¡¡¡AAAAAAH NOOOOOO OBJETO NUEVO!!!!")
+                            print("")
+                            value_sql = all_object[index_object]
+                            if value_sql != object[key]:
+                                print("Procedemos a actualizar...")
+                                sql_update = (
+                                    "UPDATE {} SET {} = '{}' WHERE {} = '{}'".format(
+                                        s3_table,
+                                        key,
+                                        object[key],
+                                        keys[0],
+                                        all_object[0],
+                                    )
+                                )
+                                print("ORDEN:", sql_update)
+                                self.cursor.execute(sql_update)
+                                self.connection.commit()
+                            index_object += 1
+                self.sql_insert = self.sql_insert[:-3]
+                print("ORDEN FINAL A EJECUTAR:", self.sql_insert)
+                self.cursor.execute(self.sql_insert)
                 self.connection.commit()
                 print(self.cursor.rowcount, "values inserted in DB!")
 
@@ -287,8 +310,16 @@ if __name__ == "__main__":
     print(response.text)
     # s3.upload_to_aws(json_file, bucket_s3, s3_json_file)
 
+    response_get = requests.get(
+        "https://0rnq7qewhh.execute-api.eu-west-3.amazonaws.com/test/jsontos3",
+    )
+    print(response_get.text)
+    data = json.loads(response_get.text)
+    with open(file_name_s3_to_local, "w") as outfile:
+        json.dump(data, outfile)
+
     # Download JSON file from AWS
-    s3.download_from_aws(bucket_s3, s3_json_file, file_name_s3_to_local)
+    # s3.download_from_aws(bucket_s3, s3_json_file, file_name_s3_to_local)
 
     # Create table in DB for S3 file
     database.json_to_db(s3_table, file_name_s3_to_local)
