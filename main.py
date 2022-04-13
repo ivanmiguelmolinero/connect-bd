@@ -112,7 +112,7 @@ class DataBase:
         else:
             self.sql_insert += str_to_add + ", "
 
-    """def json_to_db(self, s3_table, s3_file):
+    def json_to_db(self, s3_table, s3_file):
         sql = "CREATE TABLE {} (".format(s3_table)
         self.sql_insert = "INSERT INTO {} VALUES\n(".format(s3_table)
         last_object = False
@@ -137,14 +137,7 @@ class DataBase:
                 if object == data[-1]:
                     last_object = True
                 for key in keys:
-                    str_to_add = '"' + str(object[key]) + '"'
-                    if key == keys[-1]:
-                        if last_object:
-                            self.sql_insert += str_to_add + ");"
-                        else:
-                            self.sql_insert += str_to_add + "),\n("
-                    else:
-                        self.sql_insert += str_to_add + ", "
+                    self.create_order(key, keys, last_object, object)
             self.cursor.execute(self.sql_insert)
             self.connection.commit()
             print(self.cursor.rowcount, "values inserted in DB!")
@@ -199,14 +192,6 @@ class DataBase:
                                 else:
                                     print("¡¡¡AAAAAAH OBJETO NUEVO!!!!")
                                     mismo_objeto = False
-                                    #str_to_add = '"' + str(object[key]) + '"'
-                                    #if key == keys[-1]:
-                                    #    if last_object:
-                                    #        sql_insert += str_to_add + ");"
-                                    #    else:
-                                    #        sql_insert += str_to_add + "),\n("
-                                    #else:
-                                    #    sql_insert += str_to_add + ", "
                                     self.create_order(key, keys, last_object, object)
                         else:
                             print("¡¡¡AAAAAAH NOOOOOO OBJETO NUEVO!!!!")
@@ -237,7 +222,7 @@ class DataBase:
                 # self.cursor.execute(sql_all)
                 # print(self.cursor.fetchall())
             else:
-                print(e)"""
+                print(e)
 
 
 def signal_handler(signum, frame):
