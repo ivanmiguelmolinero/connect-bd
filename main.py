@@ -191,18 +191,18 @@ class DataBase:
                                         print("ORDEN:", sql_update)
                                         # Execute the order in SQL: "UPDATE {} SET {} = '{}' WHERE {} = '{}'"
                                         self.cursor.execute(sql_update)
-                                    print()
-                                    print()
                                     index_object += 1
                                 else:  # If they are not the same... => Create order to add the new object
                                     print("¡¡¡AAAAAAH OBJETO NUEVO!!!!")
                                     mismo_objeto = False
                                     self.create_order(key, keys, last_object, object)
+                        # If the same object...
                         else:
                             print("¡¡¡AAAAAAH NOOOOOO OBJETO NUEVO!!!!")
                             print("")
                             value_sql = all_object[index_object]
                             if value_sql != object[key]:
+                                # If the value has changed...
                                 print("Procedemos a actualizar...")
                                 sql_update = (
                                     "UPDATE {} SET {} = '{}' WHERE {} = '{}'".format(
@@ -212,12 +212,14 @@ class DataBase:
                                         keys[0],
                                         all_object[0],
                                     )
-                                )
+                                )  # SQL command to update an object
                                 print("ORDEN:", sql_update)
+                                # Execute the order in SQL: "UPDATE {} SET {} = '{}' WHERE {} = '{}'"
                                 self.cursor.execute(sql_update)
                                 self.connection.commit()
                             index_object += 1
                 self.sql_insert = self.sql_insert[:-3]
+                # Execute the order in SQL: "INSERT INTO table VALUES\n("
                 print("ORDEN FINAL A EJECUTAR:", self.sql_insert)
                 self.cursor.execute(self.sql_insert)
                 self.connection.commit()
