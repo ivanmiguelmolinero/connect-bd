@@ -1,6 +1,6 @@
 import subprocess
 import boto3
-from tkinter import Tk, Frame, Label, Button
+from tkinter import Entry, StringVar, Tk, Frame, Label, Button
 from dotenv import dotenv_values
 
 
@@ -29,10 +29,17 @@ def cmd(str_in):  # ,commando
 
 
 def codigoBoton():
+    # info.set("Descargando aplicación...")
+    text_var = "Descargando aplicación... \n\n"
+    info.set(text_var)
     s3.download_from_aws(bucket_s3, "main.py", "main.py")
 
     # print("Introduzca comando: ", end="")
     # str_in = input()
+    # info.set("Instalando...")
+    text_var += "Instalando... \n"
+    print("TEXTO VARIABLE:", text_var)
+    info.set(text_var)
     cmd("Instalar")
 
 
@@ -63,7 +70,14 @@ if __name__ == "__main__":
     miFrame.pack()
 
     miLabel = Label(miFrame, text="Presiona 'Instalar' para instalar el programa.")
-    miLabel.pack()
+    miLabel.grid(row=0, column=1, padx=10, pady=10)
+    # miLabel.pack()
+
+    info = StringVar()
+
+    cuadroInfo = Entry(miFrame, width=50, state="readonly", textvariable=info)
+    cuadroInfo.grid(row=1, column=1, padx=10, pady=10)
+    # cuadroInfo.pack()
 
     botonInstall = Button(raiz, text="Instalar", command=codigoBoton)
     botonInstall.pack()

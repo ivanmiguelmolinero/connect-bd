@@ -233,6 +233,30 @@ def signal_handler(signum, frame):
     exit_event.set()
 
 
+def check_app_version():
+    APP_NAME = __file__.split("\\")[-1]
+    print(APP_NAME)
+    # Index of the characters between which the version number is found
+    i = APP_NAME.find("r")
+    j = APP_NAME.rfind(".")
+    version = float(APP_NAME[i + 1 : j])
+    return version
+
+
+def file_list_bucket():
+    session = boto3.Session(
+        aws_access_key_id=ACCESS_KEY, aws_secret_access_key=SECRET_KEY
+    )
+    s3_session = session.resource("s3")
+
+    my_bucket = s3_session.Bucket(bucket_s3)
+
+    for my_bucket_object in my_bucket.objects.all():
+        if my_bucket_object.key.startswith("main"):
+            print(my_bucket_object.key)
+            s3.download_from_aws(bucket_s3, my_bucket_object.key, my_bucket_object.key)
+
+
 class S3_aws:
     def __init__(self):
         self.s3 = boto3.client(
@@ -250,11 +274,14 @@ class S3_aws:
             print("Credentials not available")
 
     def download_from_aws(self, bucket, s3_file, local_file):
+        global new_version
+
         try:
             self.s3.download_file(bucket, s3_file, local_file)
             print("Download successful!")
         except Exception as e:
             print("Download error!", e)
+            new_version = True
 
 
 if __name__ == "__main__":
@@ -274,7 +301,22 @@ if __name__ == "__main__":
     s3_table = config["s3_table"]
     json_content = []
 
+    # Boolean for check versions
+    new_version = False
+
     exit_event = threading.Event()
+
+    # Load s3 bucket
+    s3 = S3_aws()
+
+    # Check the app version
+    app_version = check_app_version()
+
+    # Download last version
+    s3.download_from_aws(bucket_s3, __file__, "/tmp/file.py")
+    if new_version:
+        print("NUEVA VERSIÓN, a hacer cosas")
+        file_list_bucket()
 
     # Load database
     database = DataBase()
@@ -285,9 +327,6 @@ if __name__ == "__main__":
         target=database.data_to_json, args=(table_db, json_file)  # Dump data to JSON
     )
     consult_db.start()
-
-    # Load s3 bucket
-    s3 = S3_aws()
 
     # Send POST to API Gateway with JSON file
     response = requests.post(
