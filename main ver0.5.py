@@ -19,10 +19,11 @@ import requests
 import boto3
 from botocore.exceptions import NoCredentialsError
 from dotenv import dotenv_values
+from tkinter import Entry, StringVar, Tk, Frame, Label, Button
 
 
 class DataBase:
-    def __init__(self):
+    def __init__(self, sql_host, sqluser, sqlpassword):
         self.connection = pymysql.connect(
             host=sql_host, user=sqluser, password=sqlpassword, db=db_name  # ip
         )
@@ -257,6 +258,50 @@ def file_list_bucket():
             s3.download_from_aws(bucket_s3, my_bucket_object.key, my_bucket_object.key)
 
 
+def iniciar_app():
+    global json_content
+
+    # Get user data
+    sql_host = cuadroHost.get()
+    sqlpassword = cuadroContraseña.get()
+    sqluser = cuadroUser.get()
+    print("Iniciamos app")
+    database = DataBase(sql_host, sqluser, sqlpassword)
+
+    # Consult DB for new data
+    signal.signal(signal.SIGINT, signal_handler)
+    consult_db = threading.Thread(
+        target=database.data_to_json, args=(table_db, json_file)  # Dump data to JSON
+    )
+    consult_db.start()
+
+    # Wait until get data
+    time.sleep(15)
+    # Send POST to API Gateway with JSON file
+    print(json_content)
+    response = requests.post(
+        "https://0rnq7qewhh.execute-api.eu-west-3.amazonaws.com/test/jsontos3",
+        headers={"Content-Type": "application/json"},
+        json=json_content,
+    )
+    print(response.text)
+
+    # Send GET to API Gateway
+    response_get = requests.get(
+        "https://0rnq7qewhh.execute-api.eu-west-3.amazonaws.com/test/jsontos3",
+    )
+    print(response_get.text)
+
+    # Load JSON content
+    data = json.loads(response_get.text)
+    # Write JSON content in a file
+    with open(file_name_s3_to_local, "w") as outfile:
+        json.dump(data, outfile)
+
+    # Create table in DB for S3 file
+    database.json_to_db(s3_table, file_name_s3_to_local)
+
+
 class S3_aws:
     def __init__(self):
         self.s3 = boto3.client(
@@ -290,9 +335,6 @@ if __name__ == "__main__":
     ACCESS_KEY = config["aws_access_key_id"]
     SECRET_KEY = config["aws_secret_access_key"]
     db_name = config["bd"]
-    sqlpassword = config["sqlpassword"]
-    sqluser = config["sqluser"]
-    sql_host = config["sql_host"]
     table_db = config["table_db"]
     json_file = config["json_file"]
     bucket_s3 = config["bucket_s3"]
@@ -306,24 +348,63 @@ if __name__ == "__main__":
 
     exit_event = threading.Event()
 
+    # Graphic interface
+    interfaz = Tk()
+
+    # Window title
+    interfaz.title("Connect BD 0.5")
+    # Make window vertically and horizontally
+    interfaz.resizable(True, True)
+    # Default size
+    interfaz.geometry("640x320")
+
+    # Interface config
+    miFrame = Frame(interfaz, width=1200, height=600)
+    miFrame.pack()
+
+    # Text
+    # miLabel = Label(miFrame, justify="center", text="Presiona 'Iniciar' para iniciar el programa.")
+    # miLabel.grid(row=0, column=0, padx=10, pady=10)
+
+    # User data
+    cuadroHost = Entry(miFrame)
+    cuadroHost.grid(row=1, column=1, padx=10, pady=10)
+    hostLabel = Label(miFrame, text="Host BD:", justify="left")
+    hostLabel.grid(row=1, column=0, sticky="e", padx=10, pady=10)
+    cuadroUser = Entry(miFrame)
+    cuadroUser.grid(row=2, column=1, padx=10, pady=10)
+    userLabel = Label(miFrame, text="Usuario BD:", justify="left")
+    userLabel.grid(row=2, column=0, sticky="e", padx=10, pady=10)
+    cuadroContraseña = Entry(miFrame, show="*")
+    cuadroContraseña.grid(row=3, column=1, padx=10, pady=10)
+    contraseñaLabel = Label(miFrame, text="Contraseña BD:", justify="left")
+    contraseñaLabel.grid(row=3, column=0, sticky="e", padx=10, pady=10)
+
+    # Start button
+    botonInstall = Button(interfaz, text="Iniciar", command=iniciar_app)
+    botonInstall.pack()
+
+    # Start interface
+    interfaz.mainloop()
+
     # Load s3 bucket
     s3 = S3_aws()
 
     # Check the app version
-    app_version = check_app_version()
+    # app_version = check_app_version()
 
     # Download last version
-    s3.download_from_aws(bucket_s3, __file__, "/tmp/file.py")
+    """s3.download_from_aws(bucket_s3, __file__, "/tmp/file.py")
     if new_version:
         res = input("Nueva versión detectada. ¿Instalar? [Y/n]: ")
         if res == "Y":
             print("NUEVA VERSIÓN, a hacer cosas")
             file_list_bucket()
         else:
-            print("Pues nada")
+            print("Pues nada")"""
 
     # Load database
-    database = DataBase()
+    """database = DataBase()
 
     # Consult DB for new data
     signal.signal(signal.SIGINT, signal_handler)
@@ -353,4 +434,4 @@ if __name__ == "__main__":
         json.dump(data, outfile)
 
     # Create table in DB for S3 file
-    database.json_to_db(s3_table, file_name_s3_to_local)
+    database.json_to_db(s3_table, file_name_s3_to_local)"""
